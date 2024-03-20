@@ -44,7 +44,7 @@ def predict_fn(video):
 	return prediction, elapsed_time
 
 # Create title, description and article strings
-title = "Deepfake Detector"
+title = "Deepfake Video Detector"
 
 # 
 model_dir = 'weights'
