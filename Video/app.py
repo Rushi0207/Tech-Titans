@@ -44,12 +44,9 @@ def predict_fn(video):
 	return prediction, elapsed_time
 
 # Create title, description and article strings
-title = "Deepfake Detector (private)"
-description = "A video Deepfake Classifier (code: https://github.com/selimsef/dfdc_deepfake_challenge)"
+title = "Deepfake Detector"
 
-example_list = ["examples/" + str(p) for p in os.listdir("examples/")]
-
-# Environments
+# 
 model_dir = 'weights'
 frames_per_video = 32
 video_reader = VideoReader()
@@ -78,9 +75,7 @@ demo = gr.Interface(fn=predict_fn, # mapping function from input to output
 					inputs=gr.Video(),
 					outputs=[gr.Label(num_top_classes=2, label="Predictions"), # what are the outputs?
 							 gr.Number(label="Prediction time (s)")], # our fn has two outputs, therefore we have two outputs
-					examples=example_list,
-					title=title,
-					description=description)
+					title=title)
 
 # Launch the demo!
 demo.launch(debug=False,) # Hugging face space don't need shareable_links
