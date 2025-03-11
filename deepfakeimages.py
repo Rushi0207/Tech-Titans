@@ -5,9 +5,8 @@ from facenet_pytorch import MTCNN, InceptionResnetV1
 import numpy as np
 from PIL import Image
 import cv2
-from pytorch_grad_cam import GradCAM
-from pytorch_grad_cam.utils.model_targets import ClassifierOutputTarget
-from pytorch_grad_cam.utils.image import show_cam_on_image
+from captum.attr import LayerGradCam
+from captum.attr import visualization as viz
 import warnings
 warnings.filterwarnings("ignore")
 
@@ -31,15 +30,15 @@ model.load_state_dict(checkpoint['model_state_dict'])
 model.to(DEVICE)
 model.eval()
 
-def predict(input_image:Image.Image):
+def predict(input_image: Image.Image):
     """Predict the label of the input_image"""
     face = mtcnn(input_image)
     if face is None:
         raise Exception('No face detected')
-    face = face.unsqueeze(0) # add the batch dimension
+    face = face.unsqueeze(0)  # add the batch dimension
     face = F.interpolate(face, size=(256, 256), mode='bilinear', align_corners=False)
-    
-    # convert the face into a numpy array to be able to plot it
+
+    # Convert the face into a numpy array to be able to plot it
     prev_face = face.squeeze(0).permute(1, 2, 0).cpu().detach().int().numpy()
     prev_face = prev_face.astype('uint8')
 
@@ -48,14 +47,18 @@ def predict(input_image:Image.Image):
     face = face / 255.0
     face_image_to_plot = face.squeeze(0).permute(1, 2, 0).cpu().detach().int().numpy()
 
-    target_layers=[model.block8.branch1[-1]]
-    use_cuda = True if torch.cuda.is_available() else False
-    cam = GradCAM(model=model, target_layers=target_layers, use_cuda=use_cuda)
-    targets = [ClassifierOutputTarget(0)]
+    # Select target layer for Grad-CAM (use an appropriate layer for your model)
+    target_layer = model.block8.branch1[-1]
 
-    grayscale_cam = cam(input_tensor=face, targets=targets, eigen_smooth=True)
-    grayscale_cam = grayscale_cam[0, :]
-    visualization = show_cam_on_image(face_image_to_plot, grayscale_cam, use_rgb=True)
+    grad_cam = LayerGradCam(model, target_layer)
+    
+    # Get the attribution for the input image (Grad-CAM output)
+    attr = grad_cam.attribute(face, target=0)
+    
+    # Visualize the attribution and apply it on the image
+    visualization = viz.visualize_image_attr(attr[0].cpu().detach().numpy(), img=prev_face, method="heat_map", sign="all")
+
+    # Combine the heatmap with the original image
     face_with_mask = cv2.addWeighted(prev_face, 1, visualization, 0.5, 0)
 
     with torch.no_grad():
@@ -69,15 +72,12 @@ def predict(input_image:Image.Image):
             'real': real_prediction,
             'fake': fake_prediction
         }
+    
     return confidences, face_with_mask
 
 interface = gr.Interface(
     fn=predict,
-    inputs=[
-        gr.inputs.Image(label="Input Image", type="pil")
-    ],
-    outputs=[
-        gr.outputs.Label(label="Class"),
-        gr.outputs.Image(label="Face with Explainability", type="pil")
-    ],
+    inputs=[gr.inputs.Image(label="Input Image", type="pil")],
+    outputs=[gr.outputs.Label(label="Class"),
+             gr.outputs.Image(label="Face with Explainability", type="pil")],
 ).launch()

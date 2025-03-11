@@ -10,7 +10,7 @@ from training.zoo.classifiers import DeepFakeClassifier
 import gradio as gr
 
 def model_fn(model_dir):
-	model_path = os.path.join(model_dir, 'b7_ns_best.pth')
+	model_path = os.path.join('Video', 'weights', 'b7_ns_best.pth')
 	model = DeepFakeClassifier(encoder="tf_efficientnet_b7_ns") # default: CPU
 	checkpoint = torch.load(model_path, map_location="cpu")
 	state_dict = checkpoint.get("state_dict", checkpoint)
